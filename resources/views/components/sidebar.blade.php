@@ -10,26 +10,28 @@
 
         <li>
             <a href="#"
-                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 bg-[#dbeafe] text-[#062f5f] shadow-sm ring-1 ring-[#062f5f]/10">
-                <i class="fa-solid fa-chart-line w-5"></i>
+                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 text-slate-700 hover:bg-[#dbeafe] hover:text-[#062f5f] hover:shadow-sm">
+                <i class="fa-solid fa-box w-5"></i>
                 <span>Produk</span>
             </a>
         </li>
-        
+
         <li>
             <a href="#"
-                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 bg-[#dbeafe] text-[#062f5f] shadow-sm ring-1 ring-[#062f5f]/10">
-                <i class="fa-solid fa-chart-line w-5"></i>
+                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 text-slate-700 hover:bg-[#dbeafe] hover:text-[#062f5f] hover:shadow-sm">
+                <i class="fa-solid fa-receipt w-5"></i>
                 <span>Transaksi</span>
             </a>
         </li>
+
         <li>
             <a href="#"
-                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 bg-[#dbeafe] text-[#062f5f] shadow-sm ring-1 ring-[#062f5f]/10">
-                <i class="fa-solid fa-chart-line w-5"></i>
+                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 text-slate-700 hover:bg-[#dbeafe] hover:text-[#062f5f] hover:shadow-sm">
+                <i class="fa-solid fa-warehouse w-5"></i>
                 <span>Stok</span>
             </a>
         </li>
+
         <li>
             <button onclick="toggleReports()"
                 class="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 cursor-pointer text-slate-700 hover:bg-[#dbeafe] hover:text-[#062f5f] hover:shadow-sm">
@@ -62,8 +64,10 @@
                         <span>Laporan Stok</span>
                     </a>
                 </li>
+
             </ul>
         </li>
+
         <li>
             <a href="#"
                 class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 text-slate-700 hover:bg-[#dbeafe] hover:text-[#062f5f] hover:shadow-sm">
@@ -71,6 +75,7 @@
                 <span>Kelola User</span>
             </a>
         </li>
+
     </ul>
 </aside>
 
