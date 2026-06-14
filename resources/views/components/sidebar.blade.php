@@ -73,3 +73,13 @@
         </li>
     </ul>
 </aside>
+
+<script>
+    function toggleReports() {
+        const menu = document.getElementById('reportsMenu');
+        const chevron = document.getElementById('reportChevron');
+
+        menu.classList.toggle('hidden');
+        chevron.classList.toggle('rotate-180');
+    }
+</script>
