@@ -26,4 +26,8 @@ Route::get('/laporan-transaksi', function () {
     return view('pages.laporan-transaksi');
 });
 
+Route::get('/laporan-stok', function () {
+    return view('pages.laporan-stok');
+});
+
 
