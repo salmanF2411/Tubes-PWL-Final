@@ -22,4 +22,8 @@ Route::get('/kelola-user', function () {
     return view('pages.kelola-user');
 });
 
+Route::get('/laporan-transaksi', function () {
+    return view('pages.laporan-transaksi');
+});
+
 
