@@ -18,4 +18,8 @@ Route::get('/stok', function () {
     return view('pages.stok');
 });
 
+Route::get('/kelola-user', function () {
+    return view('pages.kelola-user');
+});
+
 
