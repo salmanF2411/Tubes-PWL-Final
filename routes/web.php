@@ -30,4 +30,8 @@ Route::get('/laporan-stok', function () {
     return view('pages.laporan-stok');
 });
 
+Route::get('/login', function () {
+    return view('auth.login');
+});
+
 
