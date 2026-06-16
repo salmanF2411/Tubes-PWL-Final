@@ -10,3 +10,8 @@ Route::get('/produk', function () {
     return view('pages.produk');
 });
 
+Route::get('/transaksi', function () {
+    return view('pages.transaksi');
+});
+
+
