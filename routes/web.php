@@ -14,4 +14,8 @@ Route::get('/transaksi', function () {
     return view('pages.transaksi');
 });
 
+Route::get('/stok', function () {
+    return view('pages.stok');
+});
+
 
