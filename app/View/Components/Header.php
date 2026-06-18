@@ -11,9 +11,13 @@ class Header extends Component
     /**
      * Create a new component instance.
      */
-    public function __construct()
+    public $user;
+    public $notifCount;
+    public function __construct($user = 'Pak Salman Fauzi', $notifCount = 5)
     {
         //
+        $this->user = $user;
+        $this->notifCount = $notifCount;
     }
 
     /**
