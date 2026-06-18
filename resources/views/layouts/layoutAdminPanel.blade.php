@@ -22,7 +22,7 @@
 
     <x-header />
 
-<div class="flex">
+    <div class="flex">
         <x-sidebar />
 
         <main class="flex-1 p-8">
@@ -52,7 +52,7 @@
     </div>
 
     <x-footer />
-
+    
 </body>
 
 </html>
