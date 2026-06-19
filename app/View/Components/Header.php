@@ -8,16 +8,23 @@ use Illuminate\View\Component;
 
 class Header extends Component
 {
-    /**
-     * Create a new component instance.
-     */
     public $user;
+
     public $notifCount;
-    public function __construct($user = 'Pak Salman Fauzi', $notifCount = 5)
+
+    public $notifications;
+
+    public function __construct($user = 'Pak Salman Fauzi')
     {
-        //
         $this->user = $user;
-        $this->notifCount = $notifCount;
+
+        if (auth()->check()) {
+            $this->notifCount = auth()->user()->unreadNotifications()->count();
+            $this->notifications = auth()->user()->notifications()->latest()->limit(5)->get();
+        } else {
+            $this->notifCount = 0;
+            $this->notifications = collect();
+        }
     }
 
     /**
