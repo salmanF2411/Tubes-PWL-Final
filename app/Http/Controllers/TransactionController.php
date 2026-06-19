@@ -7,12 +7,15 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Store;
 use App\Models\Transaction as SaleTransaction;
+use App\Services\ActivityNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class TransactionController extends Controller
 {
+    public function __construct(private readonly ActivityNotificationService $activityNotifications) {}
+
     public function index(Request $request)
     {
         $stores = Store::query()
@@ -58,7 +61,7 @@ class TransactionController extends Controller
             ]);
         }
 
-        $transaction = DB::transaction(function () use ($quantities, $storeId, $validated) {
+        [$transaction, $lowStocks] = DB::transaction(function () use ($quantities, $storeId, $validated) {
             $products = Product::query()
                 ->whereIn('id', $quantities->keys())
                 ->get()
@@ -108,6 +111,8 @@ class TransactionController extends Controller
                 'status' => 'completed',
             ]);
 
+            $lowStocks = [];
+
             foreach ($quantities as $productId => $quantity) {
                 $product = $products[(int) $productId];
                 $stock = Stock::query()
@@ -130,6 +135,15 @@ class TransactionController extends Controller
                     'last_updated_at' => now(),
                 ]);
 
+                if ($beforeStock > $stock->minimum_stock && $afterStock <= $stock->minimum_stock) {
+                    $lowStocks[] = [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'current_stock' => $afterStock,
+                        'minimum_stock' => $stock->minimum_stock,
+                    ];
+                }
+
                 StockMovement::create([
                     'store_id' => $storeId,
                     'product_id' => $product->id,
@@ -145,8 +159,29 @@ class TransactionController extends Controller
                 ]);
             }
 
-            return $transaction;
+            return [$transaction, $lowStocks];
         });
+
+        $store = Store::find($storeId);
+        $this->activityNotifications->send(
+            [$storeId],
+            'transaction',
+            'Transaksi Berhasil',
+            'Transaksi '.$transaction->invoice_number.' senilai Rp '.number_format((float) $transaction->total, 0, ',', '.')." berhasil diproses di {$store?->name}.",
+            route('laporan-transaksi', ['store_id' => $storeId], false),
+            ['transaction_id' => $transaction->id, 'store_id' => $storeId],
+        );
+
+        foreach ($lowStocks as $lowStock) {
+            $this->activityNotifications->send(
+                [$storeId],
+                'low_stock',
+                'Stok Produk Terbatas',
+                "{$lowStock['product_name']} di {$store?->name} tersisa {$lowStock['current_stock']} unit (minimum {$lowStock['minimum_stock']}).",
+                route('stok', ['store_id' => $storeId], false),
+                ['product_id' => $lowStock['product_id'], 'store_id' => $storeId],
+            );
+        }
 
         return redirect()
             ->route('transaksi', ['store_id' => $storeId])

@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Store;
+use App\Services\ActivityNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -15,6 +16,8 @@ use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
+    public function __construct(private readonly ActivityNotificationService $activityNotifications) {}
+
     public function index(Request $request)
     {
         $storeIds = $this->visibleStoreIds();
@@ -69,7 +72,7 @@ class ProductController extends Controller
             $productData['image_path'] = $imagePath;
         }
 
-        DB::transaction(function () use ($storeIds, $initialStock, $productData) {
+        $product = DB::transaction(function () use ($storeIds, $initialStock, $productData) {
             $product = Product::create($productData + ['is_active' => true]);
 
             foreach ($storeIds as $storeId) {
@@ -95,7 +98,19 @@ class ProductController extends Controller
                     ]);
                 }
             }
+
+            return $product;
         });
+
+        $storeNames = Store::query()->whereIn('id', $storeIds)->pluck('name')->join(', ');
+        $this->activityNotifications->send(
+            $storeIds,
+            'product',
+            'Produk Baru Ditambahkan',
+            "Produk {$product->name} ditambahkan di {$storeNames} dengan stok awal {$initialStock} unit.",
+            route('produk', absolute: false),
+            ['product_id' => $product->id, 'store_ids' => $storeIds],
+        );
 
         return redirect()->route('produk')->with('success', 'Produk berhasil ditambahkan.');
     }
@@ -112,7 +127,8 @@ class ProductController extends Controller
             $productData['image_path'] = $imagePath;
         }
 
-        DB::transaction(function () use ($product, $storeIds, $initialStock, $productData) {
+        $stockChanges = DB::transaction(function () use ($product, $storeIds, $initialStock, $productData) {
+            $stockChanges = [];
             $product->update($productData);
 
             foreach ($storeIds as $storeId) {
@@ -133,6 +149,12 @@ class ProductController extends Controller
                 ]);
 
                 if ($beforeStock !== $initialStock) {
+                    $stockChanges[] = [
+                        'store_id' => $storeId,
+                        'before' => $beforeStock,
+                        'after' => $initialStock,
+                    ];
+
                     StockMovement::create([
                         'store_id' => $storeId,
                         'product_id' => $product->id,
@@ -148,14 +170,49 @@ class ProductController extends Controller
             }
 
             $product->stocks()->update(['minimum_stock' => $product->minimum_stock]);
+
+            return $stockChanges;
         });
+
+        if ($stockChanges === []) {
+            $this->activityNotifications->send(
+                $storeIds,
+                'product',
+                'Produk Diperbarui',
+                "Data produk {$product->name} berhasil diperbarui.",
+                route('produk', absolute: false),
+                ['product_id' => $product->id, 'store_ids' => $storeIds],
+            );
+        }
+
+        foreach ($stockChanges as $change) {
+            $store = Store::find($change['store_id']);
+            $this->activityNotifications->send(
+                [$change['store_id']],
+                'stock',
+                'Stok Produk Diperbarui',
+                "Stok {$product->name} di {$store?->name} berubah dari {$change['before']} menjadi {$change['after']} unit.",
+                route('produk', ['store_id' => $change['store_id']], false),
+                ['product_id' => $product->id, 'store_id' => $change['store_id']],
+            );
+        }
 
         return redirect()->route('produk')->with('success', 'Produk berhasil diperbarui.');
     }
 
     public function destroy(Product $product)
     {
+        $storeIds = $product->stocks()->pluck('store_id')->all();
         $product->update(['is_active' => false]);
+
+        $this->activityNotifications->send(
+            $storeIds,
+            'product',
+            'Produk Dinonaktifkan',
+            "Produk {$product->name} telah dinonaktifkan oleh {$this->currentUser()->name}.",
+            route('produk', absolute: false),
+            ['product_id' => $product->id, 'store_ids' => $storeIds],
+        );
 
         return redirect()->route('produk')->with('success', 'Produk berhasil dinonaktifkan.');
     }

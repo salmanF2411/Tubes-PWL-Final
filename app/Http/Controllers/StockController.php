@@ -7,12 +7,15 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\StockTransfer;
 use App\Models\Store;
+use App\Services\ActivityNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class StockController extends Controller
 {
+    public function __construct(private readonly ActivityNotificationService $activityNotifications) {}
+
     public function index(Request $request)
     {
         $visibleStoreIds = $this->visibleStoreIds();
@@ -115,7 +118,7 @@ class StockController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($validated, $fromStoreId, $toStoreId) {
+        [$transfer, $becameLowStock] = DB::transaction(function () use ($validated, $fromStoreId, $toStoreId) {
             $sourceStock = Stock::query()
                 ->where('store_id', $fromStoreId)
                 ->where('product_id', $validated['product_id'])
@@ -161,7 +164,38 @@ class StockController extends Controller
                 'reference_id' => $transfer->id,
                 'notes' => 'Pengiriman stok antar cabang',
             ]);
+
+            return [
+                $transfer,
+                $beforeStock > $sourceStock->minimum_stock && $afterStock <= $sourceStock->minimum_stock,
+            ];
         });
+
+        $transfer->load(['fromStore', 'toStore', 'product']);
+        $this->activityNotifications->send(
+            [$fromStoreId, $toStoreId],
+            'stock_transfer',
+            'Pengiriman Stok Dibuat',
+            "Pengiriman {$transfer->quantity} unit {$transfer->product->name} dari {$transfer->fromStore->name} ke {$transfer->toStore->name} menunggu konfirmasi.",
+            route('stok', absolute: false),
+            ['stock_transfer_id' => $transfer->id, 'store_ids' => [$fromStoreId, $toStoreId]],
+        );
+
+        if ($becameLowStock) {
+            $sourceStock = Stock::query()
+                ->where('store_id', $fromStoreId)
+                ->where('product_id', $transfer->product_id)
+                ->first();
+
+            $this->activityNotifications->send(
+                [$fromStoreId],
+                'low_stock',
+                'Stok Produk Terbatas',
+                "{$transfer->product->name} di {$transfer->fromStore->name} tersisa {$sourceStock?->current_stock} unit setelah pengiriman stok.",
+                route('stok', ['store_id' => $fromStoreId], false),
+                ['product_id' => $transfer->product_id, 'store_id' => $fromStoreId],
+            );
+        }
 
         return redirect()->route('stok')->with('success', 'Transfer stok berhasil dibuat dan menunggu konfirmasi cabang tujuan.');
     }
@@ -220,6 +254,16 @@ class StockController extends Controller
                 'notes' => 'Konfirmasi penerimaan transfer stok',
             ]);
         });
+
+        $stockTransfer->refresh()->load(['fromStore', 'toStore', 'product']);
+        $this->activityNotifications->send(
+            [$stockTransfer->from_store_id, $stockTransfer->to_store_id],
+            'stock_transfer',
+            'Pengiriman Stok Diterima',
+            "Pengiriman {$stockTransfer->quantity} unit {$stockTransfer->product->name} dari {$stockTransfer->fromStore->name} telah diterima oleh {$stockTransfer->toStore->name}.",
+            route('stok', absolute: false),
+            ['stock_transfer_id' => $stockTransfer->id, 'store_ids' => [$stockTransfer->from_store_id, $stockTransfer->to_store_id]],
+        );
 
         return redirect()->route('stok')->with('success', 'Transfer stok berhasil dikonfirmasi.');
     }
